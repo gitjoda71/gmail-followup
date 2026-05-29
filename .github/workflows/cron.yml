@@ -1,0 +1,63 @@
+name: gmail-followup cron
+
+on:
+  schedule:
+    # Varje timme 07:00-15:00 UTC mån-fre. Motsvarar 08-16 vinter /
+    # 09-17 sommar Stockholm. Hourly-frekvens ger ~1h precision på
+    # FOLLOWUP_MIN_HOURS-tröskeln (annars hamnar tröskeln mellan körningar
+    # och vi missar första passande tillfälle).
+    # GH cron kan vara 0–60 min sen pga GH-last; acceptabelt.
+    - cron: "0 7-15 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Forcera follow-up-utkast nu (skippa FOLLOWUP_MIN_HOURS)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gmail-followup
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TZ: Europe/Stockholm
+      GOOGLE_SA_KEY_JSON: ${{ secrets.GOOGLE_SA_KEY_JSON }}
+      DELEGATED_USER: ${{ secrets.DELEGATED_USER }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL || 'claude-sonnet-4-6' }}
+      NOTIFY_TO: ${{ secrets.NOTIFY_TO }}
+      EXCLUDE_DOMAINS: ${{ vars.EXCLUDE_DOMAINS }}
+      EXCLUDE_ADDRESSES: ${{ vars.EXCLUDE_ADDRESSES }}
+      EXTRA_CC: ${{ vars.EXTRA_CC }}
+      EXTRA_PROMPT: ${{ vars.EXTRA_PROMPT }}
+      FOLLOWUP_MIN_HOURS: ${{ vars.FOLLOWUP_MIN_HOURS }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Run
+        run: |
+          if [ "${{ inputs.force }}" = "true" ]; then
+            python -m gmail_followup --force-followup
+          else
+            python -m gmail_followup
+          fi

@@ -1,0 +1,47 @@
+# OS-skräp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor/per-maskin
+.claude/
+.vscode/
+.idea/
+
+# Build/Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+*.egg
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Secrets — aldrig i repo
+.env
+.env.local
+*.key
+*.pem
+service-account*.json
+credentials*.json
+secrets/
+
+# Lokala anteckningar
+/roadmap-*.md
+/*.tmp
+/*.bak
+
+# Lokala scratch-mappar i roten (utöver _scratch/ som har egen .gitignore)
+/_tmp/
+/_notes/
+
+# Skärmdumpar i roten
+/Screenshot_*.png
+/screenshot_*.png
