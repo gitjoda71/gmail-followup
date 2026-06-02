@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 
+from . import mask_email
 from .config import Config
 from .gmail_client import GmailClient, ParsedThread
 
@@ -88,5 +89,5 @@ def classify_thread(
         )
     return Classification(
         Action.NEEDS_REPLY_DRAFT,
-        f"motpart har svarat (från {last.from_addr}), inget utkast skapat ännu",
+        f"motpart har svarat (från {mask_email(last.from_addr)}), inget utkast skapat ännu",
     )

@@ -1,6 +1,7 @@
 """Smoke-tests för pure helpers i gmail_client."""
 from __future__ import annotations
 
+from gmail_followup import mask_email, mask_emails
 from gmail_followup.gmail_client import (
     ParsedMessage,
     ParsedThread,
@@ -108,6 +109,20 @@ def test_reply_all_dedupes_addresses():
     )
     to, cc = collect_reply_all_recipients(thread, exclude=OWNER)
     assert to.count("kund@x.com") == 1
+
+
+def test_mask_email_keeps_first_chars_and_tld():
+    assert mask_email("jonas.hammarstedt@riksbyggen.se") == "jon***@rik***.se"
+    assert mask_email("ab@x.io") == "ab***@x***.io"
+
+
+def test_mask_email_handles_bad_input():
+    assert mask_email("") == "***"
+    assert mask_email("notanemail") == "***"
+
+
+def test_mask_emails_joins_list():
+    assert mask_emails(("a@b.com", "c@d.se")) == "a***@b***.com, c***@d***.se"
 
 
 def test_reply_all_falls_back_to_first_when_all_owner():

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 
+from . import mask_email, mask_emails
 from .compose import truncate_preview
 from .config import Config
 from .gmail_client import GmailClient, ParsedThread
@@ -27,6 +28,8 @@ def notify_draft_created(
     latest = thread.messages[-1]
     preview = truncate_preview(draft_text)
 
+    # OBS: subject + latest.from_addr går till notis-mailet (inte loggen), så
+    # användaren själv ser dem. mask_email används bara i strukturerade loggar.
     subject = f"[gmail-followup] {draft_kind}-utkast klart: \"{original_subject}\""
     body = (
         f"Ett {draft_kind}-utkast har skapats i tråden \"{original_subject}\".\n"
@@ -43,5 +46,5 @@ def notify_draft_created(
         f"Granska, tweeka, och klicka Send i Gmail när det ser bra ut.\n"
     )
     msg_id = client.send_standalone(cfg.notify_to, subject, body)
-    logger.info(f"Notis skickad till {', '.join(cfg.notify_to)} (message {msg_id})")
+    logger.info(f"Notis skickad till {mask_emails(cfg.notify_to)} (message {msg_id})")
     return msg_id

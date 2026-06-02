@@ -14,6 +14,7 @@ import logging
 import sys
 import traceback
 
+from . import mask_email, mask_emails
 from .compose import compose_followup, compose_reply_draft
 from .config import Config, load_config
 from .gmail_client import GmailClient, ParsedThread, collect_reply_all_recipients
@@ -47,9 +48,8 @@ def _process_thread(
         force_followup=force_followup,
     )
     short_id = thread.id[-8:]
-    subject = thread.messages[0].subject if thread.messages else "(no subject)"
     logger.info(
-        f"[{short_id}] {subject!r} → {classification.action.value} ({classification.reason})"
+        f"[{short_id}] → {classification.action.value} ({classification.reason})"
     )
 
     if classification.action == Action.NEEDS_FOLLOWUP_DRAFT:
@@ -62,7 +62,10 @@ def _process_thread(
             extra_cc=cfg.extra_cc,
         )
         if cfg.dry_run:
-            logger.info(f"[{short_id}] DRY-RUN: skulle skapa follow-up-draft till {to} cc={cc}")
+            logger.info(
+                f"[{short_id}] DRY-RUN: skulle skapa follow-up-draft till "
+                f"{mask_emails(to)} cc={mask_emails(cc)}"
+            )
             logger.info(f"[{short_id}] DRY-RUN: utkast-preview:\n{text[:400]}")
             return
         draft_id = client.create_draft_in_thread(thread, text, to, cc)
@@ -81,7 +84,10 @@ def _process_thread(
         )
         last_msg = thread.messages[-1]
         if cfg.dry_run:
-            logger.info(f"[{short_id}] DRY-RUN: skulle skapa reply-draft till {to} cc={cc}")
+            logger.info(
+                f"[{short_id}] DRY-RUN: skulle skapa reply-draft till "
+                f"{mask_emails(to)} cc={mask_emails(cc)}"
+            )
             logger.info(f"[{short_id}] DRY-RUN: utkast-preview:\n{text[:400]}")
             return
         draft_id = client.create_draft_in_thread(thread, text, to, cc)
@@ -129,7 +135,7 @@ def run(argv: list[str] | None = None) -> int:
 
     # Hämta lista av thread-IDs med pending drafts en gång (cron-snabbare)
     pending = client.list_pending_draft_thread_ids()
-    logger.info(f"{len(pending)} tråd(ar) har pending drafts hos {cfg.delegated_user}")
+    logger.info(f"{len(pending)} tråd(ar) har pending drafts hos {mask_email(cfg.delegated_user)}")
 
     errors = 0
     for tid in thread_ids:
