@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
+import random
 import sys
+import time
 import traceback
 
 from . import mask_email, mask_emails
@@ -114,6 +117,19 @@ def run(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     _setup_logging()
+
+    # Slumpad delay för att sprida utkast-tidpunkten inom cron-fönstret.
+    # Workflowt sätter RANDOM_SLEEP_MAX_MIN beroende på vilket cron-uttryck
+    # som triggade (0 om dry-run / workflow_dispatch).
+    sleep_max_min = int(os.environ.get("RANDOM_SLEEP_MAX_MIN", "0"))
+    if sleep_max_min > 0 and not args.dry_run:
+        sleep_sec = random.randint(0, sleep_max_min * 60)
+        logger.info(
+            f"Slumpad delay: sover {sleep_sec}s "
+            f"({sleep_sec / 60:.1f} min av {sleep_max_min} min-fönstret)"
+        )
+        time.sleep(sleep_sec)
+
     cfg = load_config(dry_run=args.dry_run)
     if args.dry_run:
         logger.info("DRY-RUN: inga drafts/labels/mails kommer skapas")

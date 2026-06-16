@@ -2,12 +2,13 @@ name: gmail-followup cron
 
 on:
   schedule:
-    # Varje timme 07:00-15:00 UTC mån-fre. Motsvarar 08-16 vinter /
-    # 09-17 sommar Stockholm. Hourly-frekvens ger ~1h precision på
-    # FOLLOWUP_MIN_HOURS-tröskeln (annars hamnar tröskeln mellan körningar
-    # och vi missar första passande tillfälle).
+    # Två fönster per dag mån-fre, med slumpad delay inom respektive
+    # fönster för att inte skicka exakt samma minut varje dag.
+    # Morgon: 06:00 UTC + 0-90 min sleep → 08:00-09:30 sommar Stockholm.
+    # Eftermiddag: 11:30 UTC + 0-45 min sleep → 13:30-14:15 sommar Stockholm.
     # GH cron kan vara 0–60 min sen pga GH-last; acceptabelt.
-    - cron: "0 7-15 * * 1-5"
+    - cron: "0 6 * * 1-5"
+    - cron: "30 11 * * 1-5"
   workflow_dispatch:
     inputs:
       force:
@@ -26,7 +27,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 120  # rymmer 90 min slumpad sleep + processing
     env:
       TZ: Europe/Stockholm
       GOOGLE_SA_KEY_JSON: ${{ secrets.GOOGLE_SA_KEY_JSON }}
@@ -39,6 +40,7 @@ jobs:
       EXTRA_CC: ${{ vars.EXTRA_CC }}
       EXTRA_PROMPT: ${{ vars.EXTRA_PROMPT }}
       FOLLOWUP_MIN_HOURS: ${{ vars.FOLLOWUP_MIN_HOURS }}
+      RANDOM_SLEEP_MAX_MIN: ${{ github.event.schedule == '0 6 * * 1-5' && '90' || (github.event.schedule == '30 11 * * 1-5' && '45' || '0') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,7 +58,7 @@ jobs:
 
       - name: Run
         run: |
-          if [ "${{ inputs.force }}" = "true" ]; then
+          if [ "${{ inputs.force }}" = "true" ] || [ -n "${{ github.event.schedule }}" ]; then
             python -m gmail_followup --force-followup
           else
             python -m gmail_followup
